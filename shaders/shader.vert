@@ -8,8 +8,15 @@ uniform mat4 u_model_view;
 uniform mat4 u_normals;
 
 out vec3 v_normal;
+out vec3 v_position;
 
 void main() {
-    gl_Position = u_projection * u_model_view * a_position;
-    v_normal = (u_normals * vec4(a_normal, 0.0f)).xyz;
+
+    vec4 pos_camera = u_model_view * a_position;
+    v_position = pos_camera.xyz;
+
+    v_normal = normalize((u_normals * vec4(a_normal, 0.0f)).xyz);
+
+    // Final pos?
+    gl_Position = u_projection * pos_camera;
 }

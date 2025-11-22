@@ -9,6 +9,8 @@ import * as CYLINDER from '../../libs/objects/cylinder.js';
 import * as TORUS from '../../libs/objects/torus.js';
 import * as BUNNY from '../../libs/objects/bunny.js';
 
+const MAX_LIGHTS = 8;
+
 function setup(shaders) {
     const canvas = document.getElementById('gl-canvas');
     const gl = setupWebGL(canvas);
@@ -33,24 +35,69 @@ function setup(shaders) {
 
     let options = {
         wireframe: false,
-        normals: false
+        normals: false,
+        backfaceCulling: true,
+        depthTest: true
     }
 
     let bunnyMaterial = {
-        ka: [50, 25, 25],   // Ambient 
+        ka: [50, 25, 25],
         kd: [230, 150, 150],
         ks: [255, 255, 255],
         shininess: 100.0
     };
 
+    // Light sources in WC
+    let lights = [
+        {
+            enabled: true,
+            type: 0, // 0 = point, 1 = directional, 2 = spotlight
+            position: [5.0, 8.0, 5.0],
+            ambient: [30, 30, 30],
+            diffuse: [255, 255, 230],
+            specular: [255, 255, 255],
+            axis: [0, -1, 0],
+            aperture: 30,
+            cutoff: 5.0
+        },
+        {
+            enabled: false,
+            type: 0,
+            position: [-5.0, 5.0, 5.0],
+            ambient: [20, 20, 20],
+            diffuse: [200, 200, 255],
+            specular: [255, 255, 255],
+            axis: [0, -1, 0],
+            aperture: 30,
+            cutoff: 5.0
+        },
+        {
+            enabled: false,
+            type: 1, // directional
+            position: [0, -1, 0],
+            ambient: [10, 10, 10],
+            diffuse: [150, 150, 150],
+            specular: [100, 100, 100],
+            axis: [0, -1, 0],
+            aperture: 30,
+            cutoff: 5.0
+        }
+    ];
+
     const gui = new dat.GUI();
+
     const optionsGui = gui.addFolder("options");
-    optionsGui.add(options, "wireframe");
-    optionsGui.add(options, "normals");
+    optionsGui.add(options, "backfaceCulling").name("backface culling").onChange(v => {
+        if (v) gl.enable(gl.CULL_FACE);
+        else gl.disable(gl.CULL_FACE);
+    });
+    optionsGui.add(options, "depthTest").name("depth test").onChange(v => {
+        if (v) gl.enable(gl.DEPTH_TEST);
+        else gl.disable(gl.DEPTH_TEST);
+    });
 
     const cameraGui = gui.addFolder("camera");
     cameraGui.add(camera, "fovy").min(1).max(179).step(1).listen();
-    cameraGui.add(camera, "aspect").min(0).max(10).step(0.01).listen().domElement.style.pointerEvents = "none";
     cameraGui.add(camera, "near").min(0.1).max(20).step(0.01).listen().onChange(function (v) {
         camera.near = Math.min(camera.far - 0.5, v);
     });
@@ -58,29 +105,63 @@ function setup(shaders) {
         camera.far = Math.max(camera.near + 0.5, v);
     });
 
-    const materialGui = gui.addFolder("Bunny Material");
-    materialGui.addColor(bunnyMaterial, "ka");
-    materialGui.addColor(bunnyMaterial, "kd");
-    materialGui.addColor(bunnyMaterial, "ks");
-    materialGui.add(bunnyMaterial, "shininess").min(1).max(500);
-
     const eye = cameraGui.addFolder("eye");
-    eye.add(camera.eye, 0).step(0.05).listen();
-    eye.add(camera.eye, 1).step(0.05).listen();
-    eye.add(camera.eye, 2).step(0.05).listen();
+    eye.add(camera.eye, 0).step(0.05).name("x").listen();
+    eye.add(camera.eye, 1).step(0.05).name("y").listen();
+    eye.add(camera.eye, 2).step(0.05).name("z").listen();
 
     const at = cameraGui.addFolder("at");
-    at.add(camera.at, 0).step(0.05).listen();
-    at.add(camera.at, 1).step(0.05).listen();
-    at.add(camera.at, 2).step(0.05).listen();
+    at.add(camera.at, 0).step(0.05).name("x").listen();
+    at.add(camera.at, 1).step(0.05).name("y").listen();
+    at.add(camera.at, 2).step(0.05).name("z").listen();
 
     const up = cameraGui.addFolder("up");
-    up.add(camera.up, 0).step(0.05).listen();
-    up.add(camera.up, 1).step(0.05).listen();
-    up.add(camera.up, 2).step(0.05).listen();
+    up.add(camera.up, 0).step(0.05).name("x").listen();
+    up.add(camera.up, 1).step(0.05).name("y").listen();
+    up.add(camera.up, 2).step(0.05).name("z").listen();
 
+    const lightsGui = gui.addFolder("lights");
 
+    for (let i = 0; i < 3; i++) {
+        const light = lights[i];
+        const lightFolder = lightsGui.addFolder(`Light${i + 1}`);
 
+        lightFolder.add(light, "enabled");
+
+        const typeNames = { "Point": 0, "Directional": 1, "Spotlight": 2 };
+        lightFolder.add(light, "type", typeNames).onChange(v => {
+            light.type = parseInt(v);
+        });
+
+        const posFolder = lightFolder.addFolder("position");
+        posFolder.add(light.position, 0).min(-10).max(10).step(0.1).name("x").listen();
+        posFolder.add(light.position, 1).min(-10).max(10).step(0.1).name("y").listen();
+        posFolder.add(light.position, 2).min(-10).max(10).step(0.1).name("z").listen();
+
+        if (light.position.length == 3) {
+            light.position.push(1);
+        }
+        posFolder.add(light.position, 3).min(0).max(1).step(1).name("w").listen();
+
+        const intensitiesFolder = lightFolder.addFolder("intensities");
+        intensitiesFolder.addColor(light, "ambient");
+        intensitiesFolder.addColor(light, "diffuse");
+        intensitiesFolder.addColor(light, "specular");
+
+        const axisFolder = lightFolder.addFolder("axis");
+        axisFolder.add(light.axis, 0).min(-1).max(1).step(0.1).name("x");
+        axisFolder.add(light.axis, 1).min(-1).max(1).step(0.1).name("y");
+        axisFolder.add(light.axis, 2).min(-1).max(1).step(0.1).name("z");
+
+        lightFolder.add(light, "aperture").min(1).max(90).step(1);
+        lightFolder.add(light, "cutoff").min(0.1).max(50).step(0.1);
+    }
+
+    const materialGui = gui.addFolder("material");
+    materialGui.addColor(bunnyMaterial, "ka").name("Ka");
+    materialGui.addColor(bunnyMaterial, "kd").name("Kd");
+    materialGui.addColor(bunnyMaterial, "ks").name("Ks");
+    materialGui.add(bunnyMaterial, "shininess").min(1).max(500);
 
     let mProjection;
     let down = false;
@@ -88,11 +169,13 @@ function setup(shaders) {
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
 
     resizeCanvasToFullWindow();
     window.addEventListener('resize', resizeCanvasToFullWindow);
 
     window.addEventListener('wheel', function (event) {
+
         if (!event.altKey && !event.metaKey && !event.ctrlKey) {
             const factor = 1 - event.deltaY / 1000;
             camera.fovy = Math.max(1, Math.min(100, camera.fovy * factor));
@@ -162,22 +245,68 @@ function setup(shaders) {
         gl.viewport(0, 0, canvas.width, canvas.height);
     }
 
-    function updateUniforms(modelViewMatrix) {
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_model_view"), false, flatten(modelViewMatrix));
+    // Convert light from World Coordinates to Camera Coordinates
+    function uploadLights(mView) {
+        gl.uniform1i(gl.getUniformLocation(program, "u_n_lights"), lights.length);
+
+        // Process each light
+        for (let i = 0; i < lights.length; i++) {
+            const light = lights[i];
+
+            gl.uniform1i(gl.getUniformLocation(program, "u_lights[" + i + "].enabled"), light.enabled);
+            gl.uniform1i(gl.getUniformLocation(program, "u_lights[" + i + "].type"), light.type);
+
+            // Transform light position/direction from WC to Camera Coordinates
+            let lightPositionCamera;
+            if (light.type == 1) {
+                const direction = vec4(light.position[0], light.position[1], light.position[2], 0.0);
+                lightPositionCamera = mult(mView, direction);
+            } else {
+                const position = vec4(light.position[0], light.position[1], light.position[2], 1.0);
+                lightPositionCamera = mult(mView, position);
+            }
+            gl.uniform4fv(gl.getUniformLocation(program, "u_lights[" + i + "].position"), flatten(lightPositionCamera));
+
+            // Transform spotlight axis from WC to Camera Coordinates
+            const axisWC = vec4(light.axis[0], light.axis[1], light.axis[2], 0.0);
+            const axisCamera = mult(mView, axisWC);
+            gl.uniform3fv(gl.getUniformLocation(program, "u_lights[" + i + "].axis"),
+                flatten(vec3(axisCamera[0], axisCamera[1], axisCamera[2])));
+
+            // spotlight
+            gl.uniform1f(gl.getUniformLocation(program, "u_lights[" + i + "].aperture"),
+                light.aperture * Math.PI / 180.0); // Convert degrees to radians
+            gl.uniform1f(gl.getUniformLocation(program, "u_lights[" + i + "].cutoff"), light.cutoff);
+
+            gl.uniform3fv(gl.getUniformLocation(program, "u_lights[" + i + "].ambient"),
+                flatten(vec3(light.ambient[0] / 255, light.ambient[1] / 255, light.ambient[2] / 255)));
+            gl.uniform3fv(gl.getUniformLocation(program, "u_lights[" + i + "].diffuse"),
+                flatten(vec3(light.diffuse[0] / 255, light.diffuse[1] / 255, light.diffuse[2] / 255)));
+            gl.uniform3fv(gl.getUniformLocation(program, "u_lights[" + i + "].specular"),
+                flatten(vec3(light.specular[0] / 255, light.specular[1] / 255, light.specular[2] / 255)));
+        }
+    }
+
+    // Send transformation matrices 
+    function updateUniforms(mModelView) {
+        // Send ModelView matrix
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_model_view"), false, flatten(mModelView));
+
+        // Send Projection matrix
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_projection"), false, flatten(mProjection));
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_normals"), false, flatten(normalMatrix(modelViewMatrix)));
+
+        const mNormals = normalMatrix(mModelView);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_normals"), false, flatten(mNormals));
+
         gl.uniform1i(gl.getUniformLocation(program, "u_use_normals"), options.normals);
     }
 
+    // Send material properties (Ka, Kd, Ks, shininess) to shader
     function uploadMaterial(ka, kd, ks, shininess) {
         gl.uniform3fv(gl.getUniformLocation(program, "u_material.Ka"), flatten(ka));
         gl.uniform3fv(gl.getUniformLocation(program, "u_material.Kd"), flatten(kd));
         gl.uniform3fv(gl.getUniformLocation(program, "u_material.Ks"), flatten(ks));
         gl.uniform1f(gl.getUniformLocation(program, "u_material.shininess"), shininess);
-    }
-
-    function uploadColor(r, g, b) {
-        gl.uniform3fv(gl.getUniformLocation(program, "u_color"), flatten(vec3(r, g, b)));
     }
 
     function render(time) {
@@ -186,58 +315,104 @@ function setup(shaders) {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.useProgram(program);
 
-        const baseView = lookAt(camera.eye, camera.at, camera.up);
+        const mView = lookAt(camera.eye, camera.at, camera.up);
+
+
         mProjection = perspective(camera.fovy, camera.aspect, camera.near, camera.far);
+
         const drawMode = options.wireframe ? gl.LINES : gl.TRIANGLES;
 
-        let mView;
-        let s;
+        uploadLights(mView);
 
-        // --- ground
-        mView = mult(baseView, translate(0, -0.25, 0));
-        s = [vec4(10, 0, 0, 0), vec4(0, 0.5, 0, 0), vec4(0, 0, 10, 0), vec4(0, 0, 0, 1)];
-        s.matrix = true;
-        mView = mult(mView, s);
-        updateUniforms(mView);
-        uploadColor(0.82, 0.71, 0.55);
+        let mModelView;
+
+        // ===== Ground =====
+        mModelView = mult(mView, translate(0, -0.25, 0));
+        const groundScale = [
+            vec4(10, 0, 0, 0),
+            vec4(0, 0.5, 0, 0),
+            vec4(0, 0, 10, 0),
+            vec4(0, 0, 0, 1)
+        ];
+        groundScale.matrix = true;
+        mModelView = mult(mModelView, groundScale);
+        updateUniforms(mModelView);
+        uploadMaterial(
+            vec3(0.3, 0.25, 0.2),    // Ka - ambient
+            vec3(0.8, 0.7, 0.55),    // Kd - diffuse
+            vec3(0.1, 0.1, 0.1),     // Ks - specular
+            10.0                     // shininess
+        );
         CUBE.draw(gl, program, drawMode);
 
-        // --- Cube(Back-Left)
-        mView = mult(baseView, translate(-1.8, 1.0, -1.8));
-        s = [vec4(2, 0, 0, 0), vec4(0, 2, 0, 0), vec4(0, 0, 2, 0), vec4(0, 0, 0, 1)];
-        s.matrix = true;
-        mView = mult(mView, s);
-        updateUniforms(mView);
-        uploadColor(0.8, 0.4, 0.4);
+        // ===== Cube =====
+        mModelView = mult(mView, translate(-2.5, 1.0, -2.5));
+        const cubeScale = [
+            vec4(2, 0, 0, 0),
+            vec4(0, 2, 0, 0),
+            vec4(0, 0, 2, 0),
+            vec4(0, 0, 0, 1)
+        ];
+        cubeScale.matrix = true;
+        mModelView = mult(mModelView, cubeScale);
+        updateUniforms(mModelView);
+        uploadMaterial(
+            vec3(0.2, 0.1, 0.1),
+            vec3(0.8, 0.4, 0.4),
+            vec3(0.5, 0.5, 0.5),
+            100.0
+        );
         CUBE.draw(gl, program, drawMode);
 
-        // --- Cylinder(Back-Right)
-        mView = mult(baseView, translate(1.8, 1.0, -1.8));
-        s = [vec4(2, 0, 0, 0), vec4(0, 2, 0, 0), vec4(0, 0, 2, 0), vec4(0, 0, 0, 1)];
-        s.matrix = true;
-        mView = mult(mView, s);
-        updateUniforms(mView);
-        uploadColor(0.2, 0.6, 0.5);
+        // ===== Cylinder =====
+        mModelView = mult(mView, translate(2.5, 1.0, -2.5));
+        const cylinderScale = [
+            vec4(2, 0, 0, 0),
+            vec4(0, 2, 0, 0),
+            vec4(0, 0, 2, 0),
+            vec4(0, 0, 0, 1)
+        ];
+        cylinderScale.matrix = true;
+        mModelView = mult(mModelView, cylinderScale);
+        updateUniforms(mModelView);
+        uploadMaterial(
+            vec3(0.05, 0.15, 0.125),
+            vec3(0.2, 0.6, 0.5),
+            vec3(0.6, 0.6, 0.6),
+            80.0
+        );
         CYLINDER.draw(gl, program, drawMode);
 
-        // --- Torus(Front-Left) 
-
-        mView = mult(baseView, translate(-1.8, 0.5, 1.8));
-        s = [vec4(2, 0, 0, 0), vec4(0, 2, 0, 0), vec4(0, 0, 2, 0), vec4(0, 0, 0, 1)];
-        s.matrix = true;
-        mView = mult(mView, s);
-        updateUniforms(mView);
-        uploadColor(0.3, 0.7, 0.3);
+        // ===== Torus =====
+        mModelView = mult(mView, translate(-2.5, 1.0, 2.5));
+        const torusScale = [
+            vec4(2, 0, 0, 0),
+            vec4(0, 2, 0, 0),
+            vec4(0, 0, 2, 0),
+            vec4(0, 0, 0, 1)
+        ];
+        torusScale.matrix = true;
+        mModelView = mult(mModelView, torusScale);
+        updateUniforms(mModelView);
+        uploadMaterial(
+            vec3(0.075, 0.175, 0.075),
+            vec3(0.3, 0.7, 0.3),
+            vec3(0.4, 0.4, 0.4),
+            60.0
+        );
         TORUS.draw(gl, program, drawMode);
 
-        // --- Bunny(Front-Right)
-
-        mView = mult(baseView, translate(1.8, 0.5, 1.8));
-        s = [vec4(2.0, 0, 0, 0), vec4(0, 2.0, 0, 0), vec4(0, 0, 2.0, 0), vec4(0, 0, 0, 1)];
-        s.matrix = true;
-        mView = mult(mView, s);
-        updateUniforms(mView);
-        uploadColor(0.9, 0.7, 0.8);
+        // ===== Bunny =====
+        mModelView = mult(mView, translate(2.5, 1.0, 2.5));
+        const bunnyScale = [
+            vec4(2.0, 0, 0, 0),
+            vec4(0, 2.0, 0, 0),
+            vec4(0, 0, 2.0, 0),
+            vec4(0, 0, 0, 1)
+        ];
+        bunnyScale.matrix = true;
+        mModelView = mult(mModelView, bunnyScale);
+        updateUniforms(mModelView);
         uploadMaterial(
             vec3(bunnyMaterial.ka[0] / 255, bunnyMaterial.ka[1] / 255, bunnyMaterial.ka[2] / 255),
             vec3(bunnyMaterial.kd[0] / 255, bunnyMaterial.kd[1] / 255, bunnyMaterial.kd[2] / 255),

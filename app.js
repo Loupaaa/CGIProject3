@@ -51,14 +51,14 @@ function setup(shaders) {
     let lights = [
         {
             enabled: true,
-            type: 0, // 0 = point, 1 = directional, 2 = spotlight
-            position: [5.0, 8.0, 5.0],
-            ambient: [30, 30, 30],
-            diffuse: [255, 255, 230],
+            type: 2,  // Spotlight
+            position: [0, 8, 0, 1],
+            ambient: [50, 50, 50],
+            diffuse: [150, 150, 150],
             specular: [255, 255, 255],
             axis: [0, -1, 0],
-            aperture: 30,
-            cutoff: 5.0
+            aperture: 50,
+            cutoff: 8.0
         },
         {
             enabled: false,
@@ -384,7 +384,7 @@ function setup(shaders) {
         CYLINDER.draw(gl, program, drawMode);
 
         // ===== Torus =====
-        mModelView = mult(mView, translate(-2.5, 1.0, 2.5));
+        mModelView = mult(mView, translate(-2.5, 0.4, 2.5));
         const torusScale = [
             vec4(2, 0, 0, 0),
             vec4(0, 2, 0, 0),

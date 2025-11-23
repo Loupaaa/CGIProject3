@@ -9,11 +9,11 @@ struct LightInfo {
     vec3 diffuse;
     vec3 specular;
     vec4 position;
-    vec3 axis;      // direction
-    float aperture; // aperture angle 
+    vec3 axis;
+    float aperture;
     float cutoff;
     bool enabled;
-    int type;       // 0 = point, 1 = directional, 2 = spotlight
+    int type;
 };
 
 struct MaterialInfo {
@@ -35,7 +35,6 @@ in vec3 v_position;
 out vec4 color;
 
 void main() {
-
     if(u_use_normals) {
         color = vec4(0.5f * (v_normal + vec3(1.0f)), 1.0f);
         return;
@@ -52,29 +51,26 @@ void main() {
         if(!u_lights[l].enabled)
             continue;
 
+        // Ambient term
         vec3 ambient = u_lights[l].ambient * u_material.Ka;
 
+        // Light direction
         vec3 L;
         if(u_lights[l].type == 1) {
             L = normalize(-u_lights[l].position.xyz);
         } else {
-
             L = normalize(u_lights[l].position.xyz - v_position);
         }
 
         float attenuation = 1.0f;
 
-        // Spotlight attenuation
         if(u_lights[l].type == 2) {
-            vec3 spotDir = normalize(-u_lights[l].axis);
+            vec3 spotDir = normalize(u_lights[l].axis);
             float spotCos = dot(-L, spotDir);
-            float spotAngle = acos(spotCos);
 
-            if(spotAngle > u_lights[l].aperture) {
-
+            if(spotCos < cos(u_lights[l].aperture)) {
                 attenuation = 0.0f;
             } else {
-
                 attenuation = pow(spotCos, u_lights[l].cutoff);
             }
         }
@@ -85,6 +81,11 @@ void main() {
         vec3 R = reflect(-L, N);
         float RdotV = max(dot(R, V), 0.0f);
         vec3 specular = u_lights[l].specular * u_material.Ks * pow(RdotV, u_material.shininess);
+
+        // Prevent specular negatives
+        if(NdotL <= 0.0f) {
+            specular = vec3(0.0f);
+        }
 
         finalColor += ambient + attenuation * (diffuse + specular);
     }

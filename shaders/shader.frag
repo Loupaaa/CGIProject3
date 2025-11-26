@@ -1,6 +1,7 @@
 #version 300 es
 
 precision mediump float;
+precision mediump int;
 
 const int MAX_LIGHTS = 8;
 
@@ -24,6 +25,7 @@ struct MaterialInfo {
 };
 
 uniform bool u_use_normals;
+uniform bool u_use_gouraud;
 uniform vec3 u_color;
 uniform int u_n_lights;
 uniform LightInfo u_lights[MAX_LIGHTS];
@@ -31,12 +33,18 @@ uniform MaterialInfo u_material;
 
 in vec3 v_normal;
 in vec3 v_position;
+in vec4 v_color;
 
 out vec4 color;
 
 void main() {
     if(u_use_normals) {
         color = vec4(0.5f * (v_normal + vec3(1.0f)), 1.0f);
+        return;
+    }
+
+    if(u_use_gouraud) {
+        color = v_color;
         return;
     }
 

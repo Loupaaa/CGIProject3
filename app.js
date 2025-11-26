@@ -37,7 +37,8 @@ function setup(shaders) {
         wireframe: false,
         normals: false,
         backfaceCulling: true,
-        depthTest: true
+        depthTest: true,
+        shadingModel: "Phong"
     }
 
     let bunnyMaterial = {
@@ -53,8 +54,8 @@ function setup(shaders) {
             enabled: true,
             type: 2,  // Spotlight
             position: [0, 8, 0, 1],
-            ambient: [50, 50, 50],
-            diffuse: [150, 150, 150],
+            ambient: [100, 100, 100],
+            diffuse: [220, 220, 220],
             specular: [255, 255, 255],
             axis: [0, -1, 0],
             aperture: 50,
@@ -75,9 +76,9 @@ function setup(shaders) {
             enabled: false,
             type: 1, // directional
             position: [0, -1, 0],
-            ambient: [10, 10, 10],
-            diffuse: [150, 150, 150],
-            specular: [100, 100, 100],
+            ambient: [150, 150, 150],
+            diffuse: [200, 200, 200],
+            specular: [150, 150, 150],
             axis: [0, -1, 0],
             aperture: 30,
             cutoff: 5.0
@@ -87,6 +88,9 @@ function setup(shaders) {
     const gui = new dat.GUI();
 
     const optionsGui = gui.addFolder("options");
+
+    optionsGui.add(options, "shadingModel", ["Phong", "Gouraud"]).name("Shading Model");
+
     optionsGui.add(options, "backfaceCulling").name("backface culling").onChange(v => {
         if (v) gl.enable(gl.CULL_FACE);
         else gl.disable(gl.CULL_FACE);
@@ -299,6 +303,9 @@ function setup(shaders) {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_normals"), false, flatten(mNormals));
 
         gl.uniform1i(gl.getUniformLocation(program, "u_use_normals"), options.normals);
+
+        gl.uniform1i(gl.getUniformLocation(program, "u_use_gouraud"), options.shadingModel === "Gouraud");
+
     }
 
     // Send material properties (Ka, Kd, Ks, shininess) to shader

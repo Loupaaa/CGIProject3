@@ -12,6 +12,7 @@ uniform mat4 u_normals;
 
 uniform bool u_use_gouraud;
 uniform int u_n_lights;
+uniform vec3 u_global_ambient;
 
 const int MAX_LIGHTS = 8;
 
@@ -59,7 +60,7 @@ void main() {
         vec3 N = normalize((u_normals * vec4(a_normal, 0.0f)).xyz);
         vec3 V = normalize(-posC);
 
-        vec3 finalColor = vec3(0.0f);
+        vec3 finalColor = u_global_ambient * u_material.Ka;
 
         for(int l = 0; l < MAX_LIGHTS; l++) {
             if(l >= u_n_lights)
@@ -67,7 +68,6 @@ void main() {
             if(!u_lights[l].enabled)
                 continue;
 
-           
             vec3 ambient = u_lights[l].ambient * u_material.Ka;
 
             // direction

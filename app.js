@@ -38,7 +38,8 @@ function setup(shaders) {
         normals: false,
         backfaceCulling: true,
         depthTest: true,
-        shadingModel: "Phong"
+        shadingModel: "Phong",
+        globalAmbient: [30, 30, 30]
     }
 
     let bunnyMaterial = {
@@ -90,6 +91,8 @@ function setup(shaders) {
     const optionsGui = gui.addFolder("options");
 
     optionsGui.add(options, "shadingModel", ["Phong", "Gouraud"]).name("Shading Model");
+
+    optionsGui.addColor(options, "globalAmbient").name("Global Ambient");
 
     optionsGui.add(options, "backfaceCulling").name("backface culling").onChange(v => {
         if (v) gl.enable(gl.CULL_FACE);
@@ -305,6 +308,9 @@ function setup(shaders) {
 
         gl.uniform1i(gl.getUniformLocation(program, "u_use_gouraud"), options.shadingModel === "Gouraud");
 
+        gl.uniform3fv(gl.getUniformLocation(program, "u_global_ambient"),
+            flatten(vec3(options.globalAmbient[0] / 255, options.globalAmbient[1] / 255, options.globalAmbient[2] / 255)));
+
     }
 
     // Send material properties to shader
@@ -344,8 +350,8 @@ function setup(shaders) {
         mModelView = mult(mModelView, groundScale);
         updateUniforms(mModelView);
         uploadMaterial(
-            vec3(0.4, 0.25, 0.2),    // Ka - ambient
-            vec3(0.8, 0.7, 0.55),    // Kd - diffuse
+            vec3(0.3, 0.2, 0.15),    // Ka - ambient
+            vec3(0.6, 0.5, 0.4),    // Kd - diffuse
             vec3(0.1, 0.1, 0.1),     // Ks - specular
             10.0                     // shininess
         );

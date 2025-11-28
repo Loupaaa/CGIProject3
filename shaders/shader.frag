@@ -30,6 +30,7 @@ uniform vec3 u_color;
 uniform int u_n_lights;
 uniform LightInfo u_lights[MAX_LIGHTS];
 uniform MaterialInfo u_material;
+uniform vec3 u_global_ambient;
 
 in vec3 v_normal;
 in vec3 v_position;
@@ -44,14 +45,15 @@ void main() {
     }
 
     if(u_use_gouraud) {
-        color = v_color;
+        vec3 globalAmbientContribution = u_global_ambient * u_material.Ka;
+        color = vec4(v_color.rgb + globalAmbientContribution, 1.0f);
         return;
     }
 
     vec3 N = normalize(v_normal);
     vec3 V = normalize(-v_position);
 
-    vec3 finalColor = vec3(0.0f);
+    vec3 finalColor = u_global_ambient * u_material.Ka;
 
     for(int l = 0; l < MAX_LIGHTS; l++) {
         if(l >= u_n_lights)
@@ -59,7 +61,6 @@ void main() {
         if(!u_lights[l].enabled)
             continue;
 
-        
         vec3 ambient = u_lights[l].ambient * u_material.Ka;
 
         // direction

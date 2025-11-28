@@ -10,7 +10,6 @@ uniform mat4 u_projection;
 uniform mat4 u_model_view;
 uniform mat4 u_normals;
 
-// Uniforms para iluminação (necessários para Gouraud)
 uniform bool u_use_gouraud;
 uniform int u_n_lights;
 
@@ -68,10 +67,10 @@ void main() {
             if(!u_lights[l].enabled)
                 continue;
 
-            // Ambient term
+           
             vec3 ambient = u_lights[l].ambient * u_material.Ka;
 
-            // Light direction
+            // direction
             vec3 L;
             if(u_lights[l].type == 1) {
                 // Directional light

@@ -59,10 +59,10 @@ void main() {
         if(!u_lights[l].enabled)
             continue;
 
-        // Ambient term
+        
         vec3 ambient = u_lights[l].ambient * u_material.Ka;
 
-        // Light direction
+        // direction
         vec3 L;
         if(u_lights[l].type == 1) {
             L = normalize(-u_lights[l].position.xyz);
@@ -90,7 +90,7 @@ void main() {
         float RdotV = max(dot(R, V), 0.0f);
         vec3 specular = u_lights[l].specular * u_material.Ks * pow(RdotV, u_material.shininess);
 
-        // Prevent specular negatives
+        // Prevent negatives
         if(NdotL <= 0.0f) {
             specular = vec3(0.0f);
         }

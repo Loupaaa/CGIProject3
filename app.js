@@ -54,7 +54,7 @@ function setup(shaders) {
             enabled: true,
             type: 2,  // Spotlight
             position: [0, 8, 0, 1],
-            ambient: [100, 100, 100],
+            ambient: [150, 150, 150],
             diffuse: [220, 220, 220],
             specular: [255, 255, 255],
             axis: [0, -1, 0],
@@ -63,7 +63,7 @@ function setup(shaders) {
         },
         {
             enabled: false,
-            type: 0,
+            type: 0, //point
             position: [-5.0, 5.0, 5.0],
             ambient: [20, 20, 20],
             diffuse: [200, 200, 255],
@@ -293,10 +293,9 @@ function setup(shaders) {
 
     // Send transformation matrices 
     function updateUniforms(mModelView) {
-        // Send ModelView matrix
+
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_model_view"), false, flatten(mModelView));
 
-        // Send Projection matrix
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_projection"), false, flatten(mProjection));
 
         const mNormals = normalMatrix(mModelView);
@@ -308,7 +307,7 @@ function setup(shaders) {
 
     }
 
-    // Send material properties (Ka, Kd, Ks, shininess) to shader
+    // Send material properties to shader
     function uploadMaterial(ka, kd, ks, shininess) {
         gl.uniform3fv(gl.getUniformLocation(program, "u_material.Ka"), flatten(ka));
         gl.uniform3fv(gl.getUniformLocation(program, "u_material.Kd"), flatten(kd));
@@ -345,7 +344,7 @@ function setup(shaders) {
         mModelView = mult(mModelView, groundScale);
         updateUniforms(mModelView);
         uploadMaterial(
-            vec3(0.3, 0.25, 0.2),    // Ka - ambient
+            vec3(0.4, 0.25, 0.2),    // Ka - ambient
             vec3(0.8, 0.7, 0.55),    // Kd - diffuse
             vec3(0.1, 0.1, 0.1),     // Ks - specular
             10.0                     // shininess

@@ -23,6 +23,7 @@ function setup(shaders) {
 
     const program = buildProgramFromSources(gl, shaders['shader.vert'], shaders['shader.frag']);
 
+    // Default camera configuration
     let camera = {
         eye: vec3(0, 5, 10),
         at: vec3(0, 0, 0),
@@ -42,6 +43,7 @@ function setup(shaders) {
         globalAmbient: [30, 30, 30]
     }
 
+    // Material properties for the bunny
     let bunnyMaterial = {
         ka: [50, 25, 25],
         kd: [230, 150, 150],
@@ -86,6 +88,7 @@ function setup(shaders) {
         }
     ];
 
+    // Create controls to modify parameters live
     const gui = new dat.GUI();
 
     const optionsGui = gui.addFolder("options");
@@ -129,6 +132,8 @@ function setup(shaders) {
 
     const lightsGui = gui.addFolder("lights");
 
+    /* Iterates through defined lights to create GUI controls for their 
+       specific parameters (type, position, intensity ...) */
     for (let i = 0; i < 3; i++) {
         const light = lights[i];
         const lightFolder = lightsGui.addFolder(`Light${i + 1}`);
@@ -179,6 +184,8 @@ function setup(shaders) {
     gl.enable(gl.CULL_FACE);
 
     resizeCanvasToFullWindow();
+
+    // -------EVENT LISTENERS-------
     window.addEventListener('resize', resizeCanvasToFullWindow);
 
     window.addEventListener('wheel', function (event) {
@@ -199,10 +206,6 @@ function setup(shaders) {
         }
     });
 
-    function inCameraSpace(m, viewMatrix) {
-        const mInvView = inverse(viewMatrix);
-        return mult(mInvView, mult(m, viewMatrix));
-    }
 
     canvas.addEventListener('mousemove', function (event) {
         if (down) {
@@ -242,6 +245,14 @@ function setup(shaders) {
     canvas.addEventListener('mouseup', function (event) {
         down = false;
     });
+
+    // ---------------------
+
+    // Helper function that transforms a matrix 'm' relative to the view matrix (camera space)
+    function inCameraSpace(m, viewMatrix) {
+        const mInvView = inverse(viewMatrix);
+        return mult(mInvView, mult(m, viewMatrix));
+    }
 
     window.requestAnimationFrame(render);
 
@@ -351,7 +362,7 @@ function setup(shaders) {
         updateUniforms(mModelView);
         uploadMaterial(
             vec3(0.3, 0.2, 0.15),    // Ka - ambient
-            vec3(0.6, 0.5, 0.4),    // Kd - diffuse
+            vec3(0.6, 0.5, 0.4),     // Kd - diffuse
             vec3(0.1, 0.1, 0.1),     // Ks - specular
             10.0                     // shininess
         );
@@ -426,6 +437,8 @@ function setup(shaders) {
         mModelView = mult(mModelView, bunnyScale);
         updateUniforms(mModelView);
         uploadMaterial(
+            /* Normalizes values from 0-255  to the 0.0-1.0 interval required by the shaders
+               This is needed because the bunny materials aren't static and can change */
             vec3(bunnyMaterial.ka[0] / 255, bunnyMaterial.ka[1] / 255, bunnyMaterial.ka[2] / 255),
             vec3(bunnyMaterial.kd[0] / 255, bunnyMaterial.kd[1] / 255, bunnyMaterial.kd[2] / 255),
             vec3(bunnyMaterial.ks[0] / 255, bunnyMaterial.ks[1] / 255, bunnyMaterial.ks[2] / 255),

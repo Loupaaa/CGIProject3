@@ -38,17 +38,15 @@ struct MaterialInfo {
 uniform LightInfo u_lights[MAX_LIGHTS];
 uniform MaterialInfo u_material;
 
-// Outputs
 out vec3 v_normal;
 out vec3 v_position;
-out vec4 v_color; // Cor calculada no vertex shader (Gouraud)
+out vec4 v_color;
 
 void main() {
     // Posição no espaço da câmera
     vec4 pos_camera = u_model_view * a_position;
     v_position = pos_camera.xyz;
 
-    // Normal transformada
     v_normal = normalize((u_normals * vec4(a_normal, 0.0f)).xyz);
 
     // Posição final
@@ -76,13 +74,12 @@ void main() {
                 // Directional light
                 L = normalize(-u_lights[l].position.xyz);
             } else {
-                // Point/Spot light
+                // Point light
                 L = normalize(u_lights[l].position.xyz - posC);
             }
 
             float attenuation = 1.0f;
 
-            // Spotlight attenuation
             if(u_lights[l].type == 2) {
                 vec3 spotDir = normalize(u_lights[l].axis);
                 float spotCos = dot(-L, spotDir);
@@ -94,11 +91,9 @@ void main() {
                 }
             }
 
-            // Diffuse
             float NdotL = max(dot(N, L), 0.0f);
             vec3 diffuse = u_lights[l].diffuse * u_material.Kd * NdotL;
 
-            // Specular
             vec3 R = reflect(-L, N);
             float RdotV = max(dot(R, V), 0.0f);
             vec3 specular = u_lights[l].specular * u_material.Ks * pow(RdotV, u_material.shininess);
